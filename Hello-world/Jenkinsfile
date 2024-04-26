@@ -1,0 +1,72 @@
+def serviceAccount = "githubcredentials"
+
+pipeline {
+    agent any
+
+    environment {
+        // Docker registry credentials
+        DOCKER_CREDENTIALS = 'dockerhub_credentials'
+        // Docker repository name
+        DOCKER_REPO = 'your_docker_username/your_docker_repository'
+        // Docker image tag
+        DOCKER_TAG = 'latest'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // GitHub deposundan kodu al
+                git(url: "githubrepo link", branch: "deneme-spring", credentialsId: "${serviceAccount}")
+            }
+        }
+
+        stage('Build') {
+            steps {
+                // Spring Boot projesini derle
+                sh 'mvn clean install -DskipTests'
+            }
+        }
+
+        stage('Dockerize') {
+            steps {
+                // Spring Boot uygulamasını Docker görüntüsüne dönüştür
+                script {
+                    docker.build("hello-world:${DOCKER_TAG}", "-f Dockerfile .")
+                }
+            }
+        } // Dockerize aşamasının kapanma süslü parantezi
+
+        // Docker görüntüsünü Docker registry'e iter
+        /*
+        stage('Push to Docker Registry') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh "docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}"
+                    }
+                    docker.withRegistry("https://index.docker.io/v1/", DOCKER_CREDENTIALS) {
+                        dockerImage.push("${DOCKER_REPO}:${DOCKER_TAG}")
+                    }
+                }
+            }
+        } // Push to Docker Registry aşamasının kapanma süslü parantezi
+        */
+
+        // Kubernetes'e uygulamayı dağıt
+        stage ('Deployment to k8s'){
+            steps {
+                echo "Deployment başladı"
+                script {
+					//Burada bu kısmı boş bırakmamızın sebebş elimizde bir k8s ortamı olmadığı için
+                    //burası boş olması zorunlu oldu, bir kuberntes cluster olsa idi eğer,
+					// Cd kısmını argo-cd kullanarak yada jenkinsi ilgili cluster a bağlayıp
+                    // ssh olur yada  jenkins üzerindeki bir plugin ile cluster a bağlanıp
+                    // ilgili yamll ları "kubectl apply -f deployment.yaml" gibi hepsini basıp uygulamayı ayağa kaldırabiliriz.
+                  
+                    echo "Deployment tamamlandı"
+                }
+            }
+        }
+    } // stages bloğunun kapanma süslü parantezi
+} // pipeline bloğunun kapanma süslü parantezi
+
